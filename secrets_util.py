@@ -43,3 +43,16 @@ def get_groq_client():
         return Groq(api_key=key)
     except Exception:  # noqa: BLE001
         return None
+
+
+def get_secret(name: str) -> Optional[str]:
+    """Read an optional secret (e.g. staff_pin) from Streamlit secrets or the environment."""
+    try:
+        import streamlit as st  # noqa: WPS433
+        val = st.secrets.get(name)
+        if val:
+            return str(val).strip()
+    except Exception:  # noqa: BLE001
+        pass
+    val = os.environ.get(name.upper())
+    return val.strip() if val else None

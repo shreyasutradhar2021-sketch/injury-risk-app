@@ -94,9 +94,11 @@ matches. Rotation and selection decisions belong to the head coach, informed by 
 medical status.
 
 ## C-15 Data quality
-Applies when: question_only
-If weekly data is missing or outside plausible ranges, no risk score is produced. Staff
-re-enter the data; values are never guessed or filled in by the system.
+Applies when: no_recent_data == yes
+If weekly data is missing or outside plausible ranges, no risk score is produced. If no
+training distance was logged in any of the last three weeks, the workload ratio cannot be
+calculated, so the risk score is not relied on until staff have checked the data. Values are
+never guessed or filled in by the system.
 
 ## C-16 Privacy and communication
 Applies when: always

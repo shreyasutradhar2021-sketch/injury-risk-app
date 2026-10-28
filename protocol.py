@@ -157,6 +157,13 @@ def retrieve(protocol: Protocol, facts: Dict, question: Optional[str] = None):
     """Return (clauses, info). info says which were found by rules / by the question."""
     rule_hits = retrieve_by_rules(protocol, facts)
     q_hits, q_sims = retrieve_by_question(protocol, question) if question else ([], [])
+    # A question that names an existing clause (e.g. "as per C-3 ...") retrieves that clause, so the
+    # briefing can correct a misquote instead of answering "not covered". Unknown IDs (C-25) do nothing.
+    for cid in re.findall(r"\bC-\d+\b", question or ""):
+        c = protocol.by_id.get(cid)
+        if c and c.cid not in {h.cid for h in q_hits}:
+            q_hits.append(c)
+            q_sims.append(1.0)
     seen, merged = set(), []
     for c in rule_hits + q_hits:
         if c.cid not in seen:

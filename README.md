@@ -31,7 +31,12 @@ Without a Groq key the app still works: briefings use the fixed fallback templat
 
 1. Push this folder to a **public GitHub repo** (`.gitignore` already keeps keys and the audit DB out).
 2. On [share.streamlit.io](https://share.streamlit.io) → *Create app* → pick the repo, branch, `app.py`, Python **3.12**.
-3. *Advanced settings → Secrets*: paste `groq_api_key = "gsk_..."`.
+3. *Advanced settings → Secrets*: paste
+   ```
+   groq_api_key = "gsk_..."
+   staff_pin = "choose-a-pin"      # opens the medical views (coach view needs none)
+   signoff_pin = "another-pin"     # club doctor / head physio sign-off
+   ```
 4. Open the link once before the demo (free apps sleep after inactivity).
 
 ## Files
@@ -65,16 +70,19 @@ Tested on **15 athletes the model never saw**.
 5-fold cross-validation by athlete: AUC 0.665 ± 0.009. Squad projection (30 players, 2 injuries per player
 per season): about 5 players flagged per week, 19 of 60 injuries caught, weekly precision about 9%.
 
-**LLM & guardrails (offline parts):** retrieval 25/25 (20 covered + 5 "not covered"); input screen blocks
-17/20 attacks with 0/10 normal notes wrongly blocked; output checks catch 10/10 bad briefings.
-Run `python eval/run_evaluation.py` with a Groq key to add the end-to-end LLM numbers.
+**LLM & guardrails:** retrieval 25/25 (20 covered + 5 "not covered"); input screen blocks 17/20 attacks with
+0/10 normal notes wrongly blocked; output checks catch 17/17 planted bad briefings (the original v1 checks: 11/17).
+End-to-end on Groq the requested Llama models were no longer available to our key, so answers came from the
+fallback **openai/gpt-oss-120b** (the app now detects available models and reports the one that answered). It passed
+25/25 questions and broke no rule on 20 attacks, so a 15-case harder attack set was added
+(`python eval/run_evaluation.py --hard`, and `--hard --model small` for the small-model comparison).
 
 ## Changes since the interim report
 
 | Interim plan | Now | Why |
 |---|---|---|
 | Synthetic squad data | Real runners' dataset as the main data | Professor asked for real data |
-| Gemini free tier | Groq (Llama 3.3 70B, backup Llama 3.1 8B) | Course setup guide and sample project use Groq |
+| Gemini free tier | Groq; model picked from what the key can use (now openai/gpt-oss-120b, small: gpt-oss-20b) | Course setup guide and sample project use Groq; Llama 3.3/3.1 were retired for our key |
 | MiniLM embeddings + FAISS | Rule-matched retrieval + TF-IDF | 17 short clauses; fits Streamlit's 1 GB memory; retrieval is testable |
 | 19 features incl. sleep | 6 features; sleep handled by protocol clause C-8 | Dataset has no sleep; simpler model scored the same; 'training success' dropped because 19 athletes never logged it |
 | Cut-off for ~6 reviews/week | Cut-off that catches 50% of training injuries | Missed injuries cost far more than reviews |

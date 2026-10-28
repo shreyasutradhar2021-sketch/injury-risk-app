@@ -7,10 +7,15 @@ a live version would use a managed database).
 import json
 import os
 import sqlite3
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Any, Dict, List
 
 DB_PATH = os.path.join(os.path.dirname(__file__), "audit_log.sqlite")
+IST = timezone(timedelta(hours=5, minutes=30))  # the club is in India; servers run on UTC
+
+
+def now_ist(fmt: str = "%Y-%m-%d %H:%M") -> str:
+    return datetime.now(IST).strftime(fmt) + " IST"
 
 
 def _conn():
@@ -24,7 +29,7 @@ def _conn():
 def log_event(event: str, player_id: str = "", actor: str = "system", details: Dict[str, Any] = None):
     with _conn() as con:
         con.execute("INSERT INTO events (ts, event, player_id, actor, details) VALUES (?,?,?,?,?)",
-                    (datetime.now().strftime("%Y-%m-%d %H:%M:%S"), event, player_id, actor,
+                    (now_ist("%Y-%m-%d %H:%M:%S"), event, player_id, actor,
                      json.dumps(details or {}, default=str)))
 
 

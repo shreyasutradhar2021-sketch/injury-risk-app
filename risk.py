@@ -79,7 +79,12 @@ def score(model: Dict, rec: Dict, borderline_band: float = 0.10) -> Dict:
     up = sorted([(f, c) for f, c in contrib.items() if c > 0], key=lambda t: -t[1])[:3]
     reasons = [describe_reason(f, feats, rec) for f, _ in up]
 
+    # No distance logged in any of the 3 weeks: ACWR is undefined (shown as 1.0 by the maths),
+    # so the score must not be relied on until the data is checked (protocol C-15).
+    no_recent = float(rec["km_this_week"]) == 0 and float(rec["km_last_week"]) == 0 and float(rec["km_two_weeks_ago"]) == 0
+
     return {
+        "no_recent_data": no_recent,
         "probability": p,
         "threshold": thr,
         "risk_level": level,
@@ -126,6 +131,7 @@ def facts_for_protocol(rec: Dict, result: Dict) -> Dict:
         "exertion": float(rec["exertion"]),
         "sleep_hours": float(rec["sleep_hours"]),
         "prior_injury_12m": int(rec["prior_injury_12m"]),
+        "no_recent_data": "yes" if result.get("no_recent_data") else "no",
     }
 
 

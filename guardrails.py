@@ -121,10 +121,53 @@ def allowed_numbers(rec: Dict, result: Dict, clause_texts: List[str]) -> Set[flo
     return vals
 
 
+# v2 output checks, added after a code review of weak spots (see PROMPT_LOG #11):
+# Hinglish/Hindi status phrases, health-status claims, treatment advice, load increases
+# no clause allows, comparisons with other players, and a summary that contradicts the risk level.
+BANNED_OUTPUT_V2 = [
+    (r"\bfit\s+(hai|he|h)\b|\bkhel\s*(sakta|sakti|lega|legi|ega)\b|\bkhelega\b|\bbench\s+(karo|kar)\b",
+     "states fitness or selection in Hindi/Hinglish"),
+    (r"\b(has|had)\s+no\s+injur\w*|\bis\s+(fine|healthy|ok|okay|fully fit)\b", "states the player's health status"),
+    (r"\bplay(s|ing)?\s+(the\s+)?(full|whole|entire)\b|\b90\s+minutes\b|\bstart(s)?\s+(on|the)\s+(saturday|sunday|match|game)",
+     "makes a playing decision"),
+    (r"\b(mri|x-ray|ultrasound|scan|anti-inflammator\w*|ibuprofen|paracetamol|painkiller\w*|medication|\d+\s*mg)\b",
+     "gives treatment or medication advice"),
+    (r"\b(than|compared (to|with)|like)\s+(the\s+)?(other|rest)\b", "compares with other players"),
+]
+
+
+def _v2_checks(briefing: Dict, result: Dict, retrieved_ids: List[str]) -> List[str]:
+    problems = []
+    free_text = " ".join([briefing.get("summary", ""), briefing.get("for_medical_team", ""),
+                          briefing.get("answer_to_question", "") or ""] + list(briefing.get("key_factors", [])))
+    everything = free_text + " " + " ".join(a.get("action", "") for a in briefing.get("protocol_actions", []))
+    if re.search(r"[\u0900-\u097F]", everything):
+        problems.append("reply is not in English")
+    for pat, why in BANNED_OUTPUT_V2:
+        if re.search(pat, everything, flags=re.I):
+            problems.append(f"policy violation: {why}")
+    # The summary must not contradict the model's risk level.
+    level = result["risk_level"].lower()
+    for m in re.finditer(r"(\bnot\s+)?\b(low|high)[\s-]+risk\b|risk\s+(?:level\s+)?(?:is|was|as|of)\s+(low|high)\b",
+                         free_text, flags=re.I):
+        said = (m.group(2) or m.group(3) or "").lower()
+        if said and said != level and not m.group(1):
+            problems.append(f"text says '{said} risk' but the model's risk level is {result['risk_level']}")
+            break
+    # Load increases: only clause C-7 (under-loading) allows increases, and only 10-15%.
+    for m in re.finditer(r"\b(increas\w*|rais\w*|go(?:es)?\s+up)\b[^.]{0,60}?\bby\s+(\d+)\s*(%|percent)",
+                         everything, flags=re.I):
+        pct = float(m.group(2))
+        if pct > 15 or "C-7" not in retrieved_ids:
+            problems.append(f"suggests increasing load by {pct:g}%, which no retrieved clause allows")
+            break
+    return problems
+
+
 def validate_briefing(briefing: Dict, *, rec: Dict, result: Dict, retrieved_ids: List[str],
                       clause_texts: List[str], player_id: str, all_player_ids: List[str],
-                      question_covered: Optional[bool]) -> List[str]:
-    """Return a list of problems. Empty list = briefing passes."""
+                      question_covered: Optional[bool], version: int = 2) -> List[str]:
+    """Return a list of problems. Empty list = briefing passes. version=1 runs the original checks only."""
     problems = []
     if briefing.get("risk_level") != result["risk_level"]:
         problems.append(f"risk_level must be '{result['risk_level']}' (the model's output), got '{briefing.get('risk_level')}'")
@@ -168,4 +211,6 @@ def validate_briefing(briefing: Dict, *, rec: Dict, result: Dict, retrieved_ids:
         ans = (briefing.get("answer_to_question") or "").strip()
         if "not covered by the protocol" not in ans.lower():
             problems.append("question is not covered by the protocol, but the answer did not say so")
+    if version >= 2:
+        problems += _v2_checks(briefing, result, retrieved_ids)
     return problems
