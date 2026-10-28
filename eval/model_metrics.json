@@ -1,0 +1,108 @@
+{
+  "dataset": {
+    "name": "Injury Prediction in Competitive Runners (L\u00f6vdal, den Hartigh & Azzopardi, 2021)",
+    "licence": "CC0",
+    "athletes": 74,
+    "rows": 42798,
+    "injuries": 575,
+    "row_definition": "One athlete on one day, with the 3 weeks of training before it",
+    "label": "Time-loss injury on the day right after the 3-week window",
+    "train_athletes": 59,
+    "test_athletes": 15,
+    "test_rows": 6210,
+    "test_injuries": 74
+  },
+  "cv_5fold_by_athlete": {
+    "logistic_regression": {
+      "mean_auc": 0.665,
+      "sd": 0.009
+    },
+    "gradient_boosting": {
+      "mean_auc": 0.675,
+      "sd": 0.014
+    },
+    "acwr_only": {
+      "mean_auc": 0.525,
+      "sd": 0.018
+    }
+  },
+  "test_results": {
+    "Baseline: always 'Low risk'": {
+      "auc": 0.5,
+      "flag_rate": 0.0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "lift_vs_base_rate": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 74,
+      "tn": 6136
+    },
+    "Baseline: flag if ACWR >= 1.5": {
+      "auc": 0.527,
+      "flag_rate": 0.0976,
+      "recall": 0.1486,
+      "precision": 0.0182,
+      "lift_vs_base_rate": 1.52,
+      "tp": 11,
+      "fp": 595,
+      "fn": 63,
+      "tn": 5541
+    },
+    "Baseline: flag if injured in last 12 months": {
+      "auc": 0.667,
+      "flag_rate": 0.4815,
+      "recall": 0.8108,
+      "precision": 0.0201,
+      "lift_vs_base_rate": 1.68,
+      "tp": 60,
+      "fp": 2930,
+      "fn": 14,
+      "tn": 3206
+    },
+    "Logistic regression, default cut-off 0.50": {
+      "auc": 0.699,
+      "flag_rate": 0.0,
+      "recall": 0.0,
+      "precision": 0.0,
+      "lift_vs_base_rate": 0.0,
+      "tp": 0,
+      "fp": 0,
+      "fn": 74,
+      "tn": 6136
+    },
+    "Logistic regression, chosen cut-off 0.0188": {
+      "auc": 0.699,
+      "flag_rate": 0.1581,
+      "recall": 0.3108,
+      "precision": 0.0234,
+      "lift_vs_base_rate": 1.97,
+      "tp": 23,
+      "fp": 959,
+      "fn": 51,
+      "tn": 5177
+    },
+    "Gradient boosting (comparison, same flag share)": {
+      "auc": 0.702,
+      "flag_rate": 0.182,
+      "recall": 0.4054,
+      "precision": 0.0265,
+      "lift_vs_base_rate": 2.23,
+      "tp": 30,
+      "fp": 1100,
+      "fn": 44,
+      "tn": 5036
+    }
+  },
+  "threshold": 0.018810396556515434,
+  "target_recall_on_train": 0.5,
+  "base_rate": 0.013693014102984584,
+  "coefficients": {
+    "acwr": 0.0107,
+    "hi_share": 0.1524,
+    "rest_days": -0.2321,
+    "strength_sessions": 0.087,
+    "exertion": 0.2169,
+    "prior_injury_12m": 0.4946
+  }
+}
