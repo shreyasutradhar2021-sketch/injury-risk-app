@@ -1,0 +1,11 @@
+# Secrets: never commit these
+credentials.json
+.streamlit/secrets.toml
+.env
+
+# Runtime files
+audit_log.sqlite
+__pycache__/
+*.pyc
+.venv/
+venv/
