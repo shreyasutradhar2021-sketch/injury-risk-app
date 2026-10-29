@@ -313,25 +313,28 @@ with st.sidebar:
                               use_container_width=True)
 
     st.divider()
-    if CLIENT is None:
-        st.warning("🤖 No Groq key found: briefings use the fixed fallback template.")
-    else:
-        st.success("🤖 AI briefings on (Groq key loaded)")
-    llm_model = st.selectbox("Briefing model", MODEL_OPTIONS,
-                             index=MODEL_OPTIONS.index(MAIN_MODEL) if MAIN_MODEL in MODEL_OPTIONS else 0,
-                             help="Only models your Groq key can use right now are listed.")
-    if CLIENT is not None and PROMPT_GUARD_ON is not None:
-        st.caption("🛡️ Prompt Guard 2 classifier: " + ("on" if PROMPT_GUARD_ON else
-                   "not available on this key (keyword screen only)"))
-    if st.button("🔄 Reset demo", use_container_width=True,
-                 help="Clears all sign-offs and data edits (for every viewer) and this browser's briefings"):
-        audit.clear_signoffs()   # shared: clears the demo decisions and data edits for every viewer
-        audit.clear_entries()
-        for k in ["squad", "briefings", "notes", "brief_player", "signoff_ver", "flash", "_squad_sel"]:
-            ss.pop(k, None)
-        audit.log_event("demo_reset", actor=reviewer)
-        st.rerun()
-    st.caption(f"Model cut-off {MODEL['threshold']:.4f} · borderline band ±{BAND:.0%}")
+    staff_tools = staff_ok and role != "Head coach"   # the coach (no PIN) never sees AI settings or Reset
+    llm_model = MAIN_MODEL if MAIN_MODEL in MODEL_OPTIONS else MODEL_OPTIONS[0]
+    if staff_tools:
+        if CLIENT is None:
+            st.warning("🤖 No Groq key found: briefings use the fixed fallback template.")
+        else:
+            st.success("🤖 AI briefings on (Groq key loaded)")
+        llm_model = st.selectbox("Briefing model", MODEL_OPTIONS, index=MODEL_OPTIONS.index(llm_model),
+                                 help="Only models your Groq key can use right now are listed.")
+        if CLIENT is not None and PROMPT_GUARD_ON is not None:
+            st.caption("🛡️ Prompt Guard 2 classifier: " + ("on" if PROMPT_GUARD_ON else
+                       "not available on this key (keyword screen only)"))
+        if st.button("🔄 Reset demo", use_container_width=True,
+                     help="Clears all sign-offs and data edits (for every viewer) and this browser's briefings. "
+                          "Staff only."):
+            audit.clear_signoffs()   # shared: clears the demo decisions and data edits for every viewer
+            audit.clear_entries()
+            for k in ["squad", "briefings", "notes", "brief_player", "signoff_ver", "flash", "_squad_sel"]:
+                ss.pop(k, None)
+            audit.log_event("demo_reset", actor=f"{reviewer} ({role})")
+            st.rerun()
+        st.caption(f"Model cut-off {MODEL['threshold']:.4f} · borderline band ±{BAND:.0%}")
 
 # ------------------------------------------------------------------ header
 workspace = ROLE_WORKSPACE[role] if (role == "Head coach" or staff_ok) else "Coach view until the staff PIN is entered"
@@ -395,7 +398,7 @@ def render_coach_table(height=560, show_signer=True):
     st.write("")
     st.dataframe(cdf.style.map(color_status, subset=["Status"]), use_container_width=True, hide_index=True,
                  height=height, column_config={"Player": st.column_config.TextColumn(width="small"),
-                                               "Medical note": st.column_config.TextColumn("Note from the medical team", width="large")})
+                                               "Medical note": st.column_config.TextColumn("Note from the medical team", width="medium")})
     st.caption("Signed-off players are listed first, newest first.")
 
 
