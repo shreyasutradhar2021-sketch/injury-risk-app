@@ -10,9 +10,11 @@ training data.
 """
 
 import json
+from datetime import datetime, timedelta, timezone
 import os
 
 import joblib
+import sklearn
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import HistGradientBoostingClassifier
@@ -26,7 +28,6 @@ from features import FEATURES, build_training_table
 
 SEED = 42
 TARGET_RECALL = 0.50  # cut-off set to catch half of the injuries in the TRAINING data
-FLAG_SHARE = 0.20     # used only for the gradient-boosting comparison
 RAW = "data/week_approach_maskedID_timeseries.csv"
 
 
@@ -130,9 +131,11 @@ def main():
             "auc": round(float(roc_auc_score(yte, p_te)), 3), **scores_at(yte, (p_te >= 0.5).astype(int))},
         f"Logistic regression, chosen cut-off {threshold:.4f}": {
             "auc": round(float(roc_auc_score(yte, p_te)), 3), **scores_at(yte, (p_te >= threshold).astype(int))},
-        "Gradient boosting (comparison, same flag share)": {
+        # Same cut-off rule as the logistic regression (catch 50% of TRAINING injuries), so the
+        # comparison is like-for-like. Not deployed: its reasons are harder for doctors to read.
+        "Gradient boosting (comparison, same cut-off rule)": {
             "auc": round(float(roc_auc_score(yte, p_gb)), 3),
-            **scores_at(yte, (p_gb >= np.quantile(gb.predict_proba(Xtr)[:, 1], 1 - FLAG_SHARE)).astype(int))},
+            **scores_at(yte, (p_gb >= np.quantile(gb.predict_proba(Xtr)[:, 1][ytr == 1], 1 - TARGET_RECALL)).astype(int))},
     }
 
     # Coefficients (on standardised features) - used for the "top 3 reasons".
@@ -160,6 +163,15 @@ def main():
         "target_recall_on_train": TARGET_RECALL,
         "base_rate": base_rate,
         "coefficients": coefs,
+        "model_info": {
+            "model_version": "LogReg-6f (logistic regression, 6 features)",
+            "trained_at": datetime.now(timezone(timedelta(hours=5, minutes=30))).strftime("%Y-%m-%d %H:%M IST"),
+            "sklearn_version": sklearn.__version__,
+            "seed": SEED,
+            "split": "Train/test split by athlete (GroupShuffleSplit); cross-validation by athlete (GroupKFold)",
+            "athletes_in_both_train_and_test": int(len(set(train["athlete_id"]) & set(test["athlete_id"]))),
+            "cut_off_chosen_on": "training athletes only (score that catches 50% of their injuries)",
+        },
     }
     with open("eval/model_metrics.json", "w") as f:
         json.dump(metrics, f, indent=2)

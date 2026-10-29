@@ -82,16 +82,16 @@
       "fn": 51,
       "tn": 5177
     },
-    "Gradient boosting (comparison, same flag share)": {
+    "Gradient boosting (comparison, same cut-off rule)": {
       "auc": 0.702,
-      "flag_rate": 0.182,
-      "recall": 0.4054,
-      "precision": 0.0265,
-      "lift_vs_base_rate": 2.23,
-      "tp": 30,
-      "fp": 1100,
-      "fn": 44,
-      "tn": 5036
+      "flag_rate": 0.152,
+      "recall": 0.3649,
+      "precision": 0.0286,
+      "lift_vs_base_rate": 2.4,
+      "tp": 27,
+      "fp": 917,
+      "fn": 47,
+      "tn": 5219
     }
   },
   "threshold": 0.018810396556515434,
@@ -104,5 +104,14 @@
     "strength_sessions": 0.087,
     "exertion": 0.2169,
     "prior_injury_12m": 0.4946
+  },
+  "model_info": {
+    "model_version": "LogReg-6f (logistic regression, 6 features)",
+    "trained_at": "2026-10-29 14:41 IST",
+    "sklearn_version": "1.9.1",
+    "seed": 42,
+    "split": "Train/test split by athlete (GroupShuffleSplit); cross-validation by athlete (GroupKFold)",
+    "athletes_in_both_train_and_test": 0,
+    "cut_off_chosen_on": "training athletes only (score that catches 50% of their injuries)"
   }
 }

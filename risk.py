@@ -40,7 +40,7 @@ def validate_inputs(rec: Dict) -> List[str]:
     for key, label, lo, hi, _default, _step in INPUT_FIELDS:
         val = rec.get(key)
         if val is None or (isinstance(val, float) and np.isnan(val)) or str(val).strip() == "":
-            errors.append(f"{label}: missing")
+            errors.append(f"{label}: missing (enter a value from {lo:g} to {hi:g})")
             continue
         try:
             v = float(val)
@@ -49,6 +49,8 @@ def validate_inputs(rec: Dict) -> List[str]:
             continue
         if v < lo or v > hi:
             errors.append(f"{label}: {v:g} is outside the allowed range {lo:g}-{hi:g}")
+        elif isinstance(_step, int) and v != int(v):
+            errors.append(f"{label}: must be a whole number (got {v:g})")
     # Cross-field checks
     try:
         if float(rec.get("hi_km", 0)) > float(rec.get("km_this_week", 0)):
@@ -145,4 +147,6 @@ def what_if(model: Dict, rec: Dict, km_cut_pct: float = 0, extra_rest: int = 0,
     nxt["km_this_week"] = new_km
     nxt["hi_km"] = min(rec["hi_km"] * (1 - hi_cut_pct / 100), new_km)
     nxt["rest_days"] = min(7, int(rec["rest_days"]) + extra_rest)
-    return score(model, nxt)
+    out = score(model, nxt)
+    out["inputs"] = nxt          # the week the scenario assumes (for the baseline-vs-plan table)
+    return out

@@ -78,22 +78,28 @@ def screen_text(text: str, groq_client=None, player_id: str = "", all_player_ids
     return (len(reasons) == 0), reasons
 
 
-def prompt_guard(text: str, client) -> Optional[float]:
-    """Llama Prompt Guard 2 on Groq. Returns probability of an attack, or None if unavailable."""
+def prompt_guard_raw(text: str, client) -> Tuple[Optional[float], str]:
+    """Llama Prompt Guard 2 on Groq: (probability of an attack or None, raw reply or error)."""
     try:
         resp = client.chat.completions.create(
             model=PROMPT_GUARD_MODEL, messages=[{"role": "user", "content": text}], temperature=0)
         out = (resp.choices[0].message.content or "").strip()
-        m = re.search(r"[01](?:\.\d+)?", out)
-        if m:
-            return float(m.group(0))
-        if "malicious" in out.lower() or "injection" in out.lower() or "jailbreak" in out.lower():
-            return 1.0
-        if "benign" in out.lower():
-            return 0.0
-    except Exception:
-        return None
-    return None
+    except Exception as e:  # noqa: BLE001
+        return None, f"error: {str(e)[:120]}"
+    m = re.search(r"\b(0(?:\.\d+)?|1(?:\.0+)?)\b", out)
+    if m:
+        return float(m.group(1)), out
+    low = out.lower()
+    if "malicious" in low or "injection" in low or "jailbreak" in low or "unsafe" in low:
+        return 1.0, out
+    if "benign" in low or "safe" in low:
+        return 0.0, out
+    return None, out
+
+
+def prompt_guard(text: str, client) -> Optional[float]:
+    """Probability that the text is an attack, or None if the classifier is unavailable."""
+    return prompt_guard_raw(text, client)[0]
 
 
 _NUM = re.compile(r"(?<![A-Za-z-])(\d+(?:\.\d+)?)")
@@ -136,7 +142,7 @@ BANNED_OUTPUT_V2 = [
 ]
 
 
-def _v2_checks(briefing: Dict, result: Dict, retrieved_ids: List[str]) -> List[str]:
+def _v2_checks(briefing: Dict, result: Dict, retrieved_ids: List[str], rule_ids: Optional[List[str]] = None) -> List[str]:
     problems = []
     free_text = " ".join([briefing.get("summary", ""), briefing.get("for_medical_team", ""),
                           briefing.get("answer_to_question", "") or ""] + list(briefing.get("key_factors", [])))
@@ -154,6 +160,13 @@ def _v2_checks(briefing: Dict, result: Dict, retrieved_ids: List[str]) -> List[s
         if said and said != level and not m.group(1):
             problems.append(f"text says '{said} risk' but the model's risk level is {result['risk_level']}")
             break
+    # A clause matched by the player's own numbers cannot be declared "not applicable" (found in testing:
+    # a staff note claimed 9.5 h sleep and the AI wrote "C-8 does not apply", although the data said 6.5 h).
+    data_clauses = set(rule_ids if rule_ids is not None else retrieved_ids)
+    for m in re.finditer(r"\b(C-\d+)\b[^.]{0,40}?\b(does not|doesn't|no longer|not)\s+appl(y|ies)\b", everything, flags=re.I):
+        if m.group(1) in data_clauses:
+            problems.append(f"says {m.group(1)} does not apply, but the player's own data triggered it")
+            break
     # Load increases: only clause C-7 (under-loading) allows increases, and only 10-15%.
     for m in re.finditer(r"\b(increas\w*|rais\w*|go(?:es)?\s+up)\b[^.]{0,60}?\bby\s+(\d+)\s*(%|percent)",
                          everything, flags=re.I):
@@ -166,7 +179,9 @@ def _v2_checks(briefing: Dict, result: Dict, retrieved_ids: List[str]) -> List[s
 
 def validate_briefing(briefing: Dict, *, rec: Dict, result: Dict, retrieved_ids: List[str],
                       clause_texts: List[str], player_id: str, all_player_ids: List[str],
-                      question_covered: Optional[bool], version: int = 2) -> List[str]:
+                      question_covered: Optional[bool], version: int = 2,
+                      rule_ids: Optional[List[str]] = None,
+                      conflict_pairs: Optional[List[Tuple[str, str]]] = None) -> List[str]:
     """Return a list of problems. Empty list = briefing passes. version=1 runs the original checks only."""
     problems = []
     if briefing.get("risk_level") != result["risk_level"]:
@@ -212,5 +227,57 @@ def validate_briefing(briefing: Dict, *, rec: Dict, result: Dict, retrieved_ids:
         if "not covered by the protocol" not in ans.lower():
             problems.append("question is not covered by the protocol, but the answer did not say so")
     if version >= 2:
-        problems += _v2_checks(briefing, result, retrieved_ids)
+        problems += _v2_checks(briefing, result, retrieved_ids, rule_ids)
+        # Conflicting clauses must be named in "conflicts" and resolved with C-17 (prompt rule 8).
+        conflict_text = " ".join(briefing.get("conflicts", []) or [])
+        for a, b in conflict_pairs or []:
+            if not (re.search(rf"\b{re.escape(a)}\b", conflict_text) and re.search(rf"\b{re.escape(b)}\b", conflict_text)):
+                problems.append(f"does not state the conflict between {a} and {b}")
+        if conflict_pairs and "C-17" not in cited:
+            problems.append("clauses conflict but C-17 (the more cautious option applies) is not cited")
+    return problems
+
+
+
+# ---------------------------------------------------------------- coach note (human-written)
+# Protocol C-16: the coach sees only the signed-off status and a short logistics note - no diagnoses,
+# body parts, symptoms, treatment or wellness numbers. Found in user testing: "Hamstring strain
+# suspected, sleep 6.5 h" reached the coach word for word. The note is now built from fixed choices
+# plus an optional extra line that must pass this screen.
+MEDICAL_TERMS = [
+    r"injur\w*", r"strain\w*", r"sprain\w*", r"tear\w*", r"torn", r"fractur\w*", r"broken", r"rupture\w*",
+    r"concuss\w*", r"diagnos\w*", r"suspect\w*", r"symptom\w*", r"pain\w*", r"sore\w*", r"ach(e|es|ing)", r"swell\w*",
+    r"inflam\w*", r"tight\w*", r"cramp\w*", r"illness", r"ill", r"sick", r"fever", r"infection", r"virus", r"covid",
+    r"hamstring\w*", r"quad\w*", r"calf", r"calves", r"groin", r"knee\w*", r"ankle\w*", r"hip\w*", r"thigh\w*", r"achilles",
+    r"acl", r"mcl", r"menisc\w*", r"ligament\w*", r"tendon\w*", r"muscle\w*", r"shoulder\w*", r"foot", r"feet",
+    r"neck", r"wrist", r"hamstrings", r"adductor\w*", r"doms",
+    r"mri", r"scan\w*", r"x-?ray\w*", r"ultrasound", r"medicat\w*", r"tablet\w*", r"pill\w*", r"ibuprofen", r"paracetamol",
+    r"painkiller\w*", r"anti-?inflammator\w*", r"inject\w*", r"physio(therapy)? (treatment|session)s?", r"rehab\w*",
+    r"sleep\w*", r"slept", r"insomnia", r"exertion", r"rpe", r"fatigue\w*", r"tired\w*", r"exhaust\w*", r"wellness",
+    r"acwr", r"workload", r"risk", r"score\w*", r"heart rate", r"hrv", r"mood", r"stress\w*", r"anxi\w*", r"depress\w*",
+    r"mental", r"bmi", r"pregnan\w*", r"hospital\w*", r"surgery",
+]
+_MED_RE = re.compile(r"\b(" + "|".join(MEDICAL_TERMS) + r")\b", re.I)
+_TIME_RE = re.compile(r"\b\d{1,2}[:.]\d{2}\b|\b\d{1,2}\s?(am|pm)\b", re.I)
+
+
+def screen_coach_note(text: str, player_id: str = "", all_player_ids: List[str] = None) -> List[str]:
+    """Return problems with a free-text line that will be shown to the head coach (empty = OK)."""
+    problems = []
+    text = (text or "").strip()
+    if not text:
+        return problems
+    if len(text) > 160:
+        problems.append("keep it under 160 characters")
+    found = sorted({m.group(0).lower() for m in _MED_RE.finditer(text)})
+    if found:
+        problems.append("contains medical or wellness details (" + ", ".join(found[:4]) + ")")
+    if re.search(r"\d", _TIME_RE.sub("", text)):
+        problems.append("contains numbers (only times such as 10:30 or 4 pm are allowed)")
+    others = [p for p in re.findall(r"\bP-\d+\b", text, flags=re.I) if p.upper() != (player_id or "").upper()]
+    if others:
+        problems.append(f"mentions another player ({others[0]})")
+    ok, why = screen_text(text, None, player_id=player_id, all_player_ids=all_player_ids)
+    if not ok and not others:
+        problems.append("looks like an instruction rather than a note")
     return problems
