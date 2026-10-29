@@ -938,10 +938,12 @@ with tabs[1]:
             st.markdown('<div class="sec-h" style="margin-top:0">Scenario comparison</div>', unsafe_allow_html=True)
             v1, v2 = st.columns(2)
             with v1:
-                card("Baseline (same load)", f"{same['risk_index']:.1f}×", f"{same['risk_level']}-risk flag")
+                card("Baseline (same load)", f"{same['risk_index']:.2f}×",
+                     "High-risk flag" if same["risk_level"] == "High" else "Low risk")
             with v2:
-                card("With this plan", f"{plan['risk_index']:.1f}×",
-                     f"{plan['risk_level']}-risk flag · {plan['risk_index'] - same['risk_index']:+.1f}× vs baseline")
+                card("With this plan", f"{plan['risk_index']:.2f}×",
+                     ("High-risk flag" if plan["risk_level"] == "High" else "Low risk") +
+                     f" · {plan['risk_index'] - same['risk_index']:+.2f}× vs baseline")
             thr_idx = MODEL["threshold"] / MODEL["base_rate"]
             scale = max(same["risk_index"], plan["risk_index"], thr_idx) * 1.15
             st.markdown(
@@ -1006,7 +1008,8 @@ def field_errors(errs):
     for e in errs:
         lab = next((lb for lb in labels if e.startswith(lb + ":")), None)
         if lab:
-            out[labels[lab]] = e[len(lab) + 1:].strip()
+            out[labels[lab]] = ("choose No or Yes" if labels[lab] == "prior_injury_12m" and "missing" in e
+                                else e[len(lab) + 1:].strip())
         elif e.startswith("High-intensity distance cannot"):
             out["hi_km"] = "cannot be more than the total distance this week"
         elif e.startswith("Player ID") or "already exists" in e:
@@ -1514,7 +1517,8 @@ with etabs[5]:
         st.code(PROTOCOL.raw, language="markdown")
 
 # ------------------------------------------------------------------ open the Player assessment tab after "Open"
-# st.tabs cannot be switched from Python, so a tiny script clicks the 2nd top-level tab in the browser.
+# st.tabs cannot be switched from Python, so a tiny script clicks the 2nd top-level tab in the browser,
+# then the player's first sub-tab (① Briefing).
 # If the browser blocks it, nothing breaks: the player is already selected in the Player assessment tab.
 if ss.pop("_goto_pending", False):
     with st.sidebar:
@@ -1524,6 +1528,9 @@ if ss.pop("_goto_pending", False):
             " var root = d.querySelector('[data-testid=stMain]') || d.querySelector('section.main') || d;"
             " var lists = root.querySelectorAll('[role=tablist]');"
             " if (lists.length) { var t = lists[0].querySelectorAll('[role=tab]');"
-            " if (t.length > 1) { t[1].click(); return; } } } catch (e) { return; }"
+            " if (t.length > 1) { t[1].click(); setTimeout(function () { try {"
+            " var l2 = root.querySelectorAll('[role=tablist]');"
+            " if (l2.length > 1) { var s2 = l2[1].querySelectorAll('[role=tab]'); if (s2.length) { s2[0].click(); } }"
+            " } catch (e2) {} }, 150); return; } } } catch (e) { return; }"
             " if (tries++ < 30) { setTimeout(go, 100); } } go(); })();</script>" % ss.get("_goto_nonce", 0),
             height=0)
