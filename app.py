@@ -59,85 +59,165 @@ st.set_page_config(page_title="Player Health & Injury Risk", page_icon="⚽", la
 # ------------------------------------------------------------------ styling
 st.markdown("""
 <style>
-@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
+/* ---------- Matchday theme: pitch green, chalk white, referee-card accents ---------- */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=DM+Mono:wght@400;500&family=Inter:wght@400;500;600;700&display=swap');
 html, body, [class*="css"] { font-family: 'Inter', -apple-system, sans-serif; }
-.stApp { background-color: #f8f7f4; color: #1e293b; }
+:root { --pitch:#0b3d2e; --pitch2:#13583f; --grass:#1e8c64; --mint:#8be3b5; --chalk:#ffffff; --ink:#0e2f2e;
+        --muted:#5e6b68; --line:#d9e3dd; --bg:#f2f5f0; --red:#d62828; --yellow:#f4c430; --amber:#b26a00; }
+.stApp { background-color: var(--bg); color: var(--ink); }
 [data-testid="stMainBlockContainer"], .block-container { padding-top: 2.2rem; }
-button[data-baseweb="tab"] p { font-size: 0.95rem; font-weight: 600; }
-.hero { background: linear-gradient(135deg, #0f1f3d 0%, #1e3a68 100%); color: #fff; padding: 14px 22px;
-        border-radius: 12px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center;
-        flex-wrap: wrap; gap: 8px; }
-.hero h1 { font-size: 1.35rem; margin: 0; color: #fff; letter-spacing: -0.01em; padding: 0; }
-.hero p { margin: 2px 0 0 0; color: #cbd5e1; font-size: 0.85rem; }
-.hero .tag { background: rgba(255,255,255,0.12); border: 1px solid rgba(255,255,255,0.25); color: #fff;
-             padding: 3px 10px; border-radius: 999px; font-size: 0.72rem; letter-spacing: 0.06em; font-weight: 600; }
-.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 10px 0; }
-.flow .step { background: #fff; border: 1px solid #e2e8f0; border-radius: 999px; padding: 3px 11px; font-size: 0.8rem; color: #334155; }
-.flow .step b { color: #1e3a68; margin-right: 4px; }
-.flow .arrow { color: #94a3b8; font-size: 0.8rem; }
-.flow .human { border-color: #1b5e20; background: #e8f5e9; }
-.disclaimer { background: #fff8e1; border: 1px solid #f3d27a; color: #6b4e00; padding: 6px 12px;
-              border-radius: 8px; font-size: 0.8rem; margin-bottom: 12px; }
-.card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 12px 14px; height: 100%; }
-.card .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; font-weight: 600; }
-.card .value { font-size: 1.55rem; font-weight: 700; color: #0f1f3d; line-height: 1.2; }
-.card .sub { font-size: 0.74rem; color: #94a3b8; }
+[data-testid="stHeader"] { background: transparent; }
 .mono { font-family: 'DM Mono', monospace; }
-.pill { display: inline-block; padding: 2px 10px; border-radius: 999px; font-weight: 600; font-size: 0.8rem; margin-right: 4px; }
-.pill-high { background: #ffebee; color: #b71c1c; }
-.pill-low { background: #e8f5e9; color: #1b5e20; }
-.pill-border { background: #fff8e1; color: #b26a00; }
-.pill-data { background: #f1f5f9; color: #475569; }
-.pill-gen { background: #e3f2fd; color: #0d47a1; }
-.pill-wait { background: #f1f5f9; color: #475569; }
-.pill-done { background: #e0e7ff; color: #1e3a68; }   /* a recorded decision, not 'safe' */
-.chip { display: inline-block; background: #eef2ff; color: #1e3a68; border-radius: 6px; padding: 3px 9px;
+
+/* hero = a floodlit pitch: mowed stripes, touchline, halfway line and centre circle */
+.hero { position: relative; overflow: hidden; color: #fff; padding: 18px 24px; border-radius: 14px; margin-bottom: 12px;
+        display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px;
+        background:
+          radial-gradient(circle at 88% 50%, transparent 0 44px, rgba(255,255,255,.30) 45px 47px, transparent 48px),
+          radial-gradient(circle at 88% 50%, rgba(255,255,255,.45) 0 4px, transparent 5px),
+          linear-gradient(90deg, transparent calc(88% - 1px), rgba(255,255,255,.30) calc(88% - 1px) calc(88% + 1px), transparent calc(88% + 1px)),
+          repeating-linear-gradient(90deg, #0d4433 0 64px, #11503c 64px 128px);
+        box-shadow: inset 0 0 0 2px rgba(255,255,255,.18), 0 6px 18px rgba(11,61,46,.18); }
+.hero > div, .hero .tag { position: relative; z-index: 1; }
+.hero h1 { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 2rem; text-transform: uppercase;
+           letter-spacing: .02em; margin: 0; color: #fff; padding: 0; line-height: 1.05; }
+.hero p { margin: 4px 0 0 0; color: #cfe9dc; font-size: 0.88rem; }
+.hero .tag { background: #06231a; border: 1px solid var(--mint); color: var(--mint); padding: 5px 12px; border-radius: 6px;
+             font-family: 'DM Mono', monospace; font-size: 0.72rem; letter-spacing: .06em; font-weight: 500;
+             box-shadow: 0 0 12px rgba(139,227,181,.25); }
+
+/* the 5-step loop as a match timeline */
+.flow { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 4px 0 12px 0; }
+.flow .step { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 4px 12px 4px 5px;
+              font-size: 0.8rem; color: var(--ink); display: inline-flex; align-items: center; gap: 7px; }
+.flow .step b { background: var(--pitch); color: #fff; border-radius: 50%; width: 20px; height: 20px; display: inline-flex;
+                align-items: center; justify-content: center; font-size: 0.72rem; margin: 0; }
+.flow .arrow { color: #9fb2a9; font-size: 0.8rem; }
+.flow .human { background: var(--pitch); border-color: var(--pitch); color: #fff; font-weight: 600; }
+.flow .human b { background: var(--mint); color: var(--pitch); }
+
+/* disclaimer = the referee's yellow card */
+.disclaimer { background: #fffbea; border: 1px solid #f1e3a6; border-left: 8px solid var(--yellow); color: #5a4500;
+              padding: 7px 12px; border-radius: 8px; font-size: 0.8rem; margin-bottom: 14px; }
+
+/* tabs as kit-coloured buttons */
+[data-baseweb="tab-list"] { gap: 6px; flex-wrap: wrap; }
+[data-baseweb="tab-highlight"], [data-baseweb="tab-border"] { display: none; }
+button[data-baseweb="tab"] { background: #fff; border: 1px solid var(--line); border-radius: 999px; padding: 5px 12px;
+                             height: auto; margin: 0; }
+button[data-baseweb="tab"] p { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 1rem; font-weight: 600;
+                               text-transform: uppercase; letter-spacing: .03em; color: var(--ink); }
+button[data-baseweb="tab"]:hover { border-color: var(--grass); }
+button[data-baseweb="tab"][aria-selected="true"] { background: var(--pitch); border-color: var(--pitch); }
+button[data-baseweb="tab"][aria-selected="true"] p { color: #fff; }
+
+/* headings */
+.page-h { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 2.1rem; font-weight: 700; color: var(--pitch);
+          margin: 6px 0 0 0; letter-spacing: .01em; text-transform: uppercase; }
+.page-sub { font-size: 0.85rem; color: var(--muted); margin: 0 0 12px 0; }
+.sec-h { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 1.35rem; font-weight: 700; color: var(--pitch);
+         margin: 18px 0 6px 0; text-transform: uppercase; letter-spacing: .02em; }
+.decision-h { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 1.3rem; font-weight: 700; color: var(--pitch);
+              text-transform: uppercase; letter-spacing: .02em; }
+
+/* stat cards = scoreboard tiles */
+.card { background: #fff; border: 1px solid var(--line); border-top: 4px solid var(--grass); border-radius: 12px;
+        padding: 12px 14px; height: 100%; box-shadow: 0 1px 3px rgba(11,61,46,.06); }
+.card .label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); font-weight: 700; }
+.card .value { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 2.3rem; font-weight: 700; color: var(--pitch);
+               line-height: 1.05; font-variant-numeric: tabular-nums; }
+.card .sub { font-size: 0.74rem; color: #8a9a93; }
+
+/* risk badges: red card, green, yellow card */
+.pill { display: inline-block; padding: 3px 11px; border-radius: 6px; font-weight: 700; font-size: 0.8rem; margin-right: 4px; }
+.pill-high { background: var(--red); color: #fff; }
+.pill-low { background: #e3f3ea; color: #146c4c; }
+.pill-border { background: var(--yellow); color: #3d2e00; }
+.pill-data { background: #e7ece9; color: #44534d; }
+.pill-gen { background: #e3f3ea; color: var(--pitch); }
+.pill-wait { background: #eef2ef; color: #44534d; }
+.pill-done { background: var(--pitch); color: #fff; }   /* a recorded decision, not 'safe' */
+.chip { display: inline-block; background: #e6f6ee; color: var(--pitch); border-radius: 6px; padding: 3px 9px;
         margin: 2px 6px 2px 0; font-size: 0.82rem; }
-.player-id { font-family: 'DM Mono', monospace; font-size: 1.6rem; font-weight: 600; color: #0f1f3d; margin-right: 8px; }
-.next { font-size: 0.85rem; color: #334155; margin-top: 6px; }
-.clause { background: #fff; border-left: 4px solid #1e3a68; padding: 8px 12px; margin: 6px 0; border-radius: 4px; font-size: 0.9rem; }
-.clause details { margin-top: 4px; } .clause summary { color: #64748b; font-size: 0.78rem; cursor: pointer; }
-.clause .src { color: #334155; font-size: 0.84rem; background: #f8fafc; border-radius: 4px; padding: 6px 8px; margin-top: 4px; }
-.draft { display: inline-block; background: #fff8e1; color: #6b4e00; border: 1px solid #f3d27a; border-radius: 6px;
+
+/* player id = squad number on the back of a shirt */
+.player-id { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-size: 2rem; font-weight: 700; color: #fff;
+             background: var(--pitch); padding: 0 12px; border-radius: 8px; margin-right: 10px; display: inline-block;
+             line-height: 1.35; letter-spacing: .03em; }
+.next { font-size: 0.85rem; color: var(--ink); margin-top: 6px; }
+
+/* protocol clauses */
+.clause { background: #fff; border: 1px solid var(--line); border-left: 4px solid var(--grass); padding: 8px 12px; margin: 6px 0;
+          border-radius: 8px; font-size: 0.9rem; }
+.clause details { margin-top: 4px; } .clause summary { color: var(--muted); font-size: 0.78rem; cursor: pointer; }
+.clause .src { color: #334155; font-size: 0.84rem; background: #f4f8f5; border-radius: 6px; padding: 6px 8px; margin-top: 4px; }
+.draft { display: inline-block; background: #fffbea; color: #5a4500; border: 1px solid #f1e3a6; border-radius: 6px;
          padding: 2px 10px; font-weight: 600; font-size: 0.8rem; margin-right: 6px; }
 .vstat { font-size: 0.82rem; color: #334155; margin: 4px 0 8px 0; }
-@media (max-width: 640px) {
-  .hero h1 { font-size: 1.05rem; } .hero p { font-size: 0.78rem; } .flow .step { font-size: 0.72rem; padding: 2px 8px; }
-  .card .value { font-size: 1.25rem; } .player-id { font-size: 1.3rem; }
-}
-.page-h { font-size: 1.6rem; font-weight: 700; color: #0f1f3d; margin: 4px 0 0 0; letter-spacing: -0.01em; }
-.page-sub { font-size: 0.85rem; color: #64748b; margin: 0 0 10px 0; }
-.sec-h { font-size: 1.15rem; font-weight: 600; color: #0f1f3d; margin: 16px 0 6px 0; }
-.queue { background: #fff; border: 1px solid #e2e8f0; border-left: 4px solid #94a3b8; border-radius: 10px;
-         padding: 8px 12px; margin-bottom: 4px; min-height: 62px; }
-.queue.q-high { border-left-color: #b71c1c; } .queue.q-conflict { border-left-color: #b26a00; }
-.queue.q-data { border-left-color: #64748b; } .queue.q-border { border-left-color: #d97706; }
-.queue .qid { font-family: 'DM Mono', monospace; font-weight: 600; font-size: 1.05rem; color: #0f1f3d; }
+
+/* attention queue = team-sheet cards */
+.queue { background: #fff; border: 1px solid var(--line); border-left: 6px solid #9fb2a9; border-radius: 12px;
+         padding: 9px 12px; margin-bottom: 6px; min-height: 62px; box-shadow: 0 1px 3px rgba(11,61,46,.05); }
+.queue.q-high { border-left-color: var(--red); } .queue.q-conflict { border-left-color: var(--yellow); }
+.queue.q-data { border-left-color: #8a9a93; } .queue.q-border { border-left-color: #e0a100; }
+.queue .qid { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; font-weight: 700; font-size: 1.2rem; color: var(--pitch);
+              text-transform: uppercase; letter-spacing: .02em; }
 .queue .qwhy { font-size: 0.8rem; color: #475569; }
+
+/* assessment progress */
 .stepper { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 4px 0; }
-.stepper .s { flex: 1 1 140px; border: 1px solid #e2e8f0; border-radius: 8px; padding: 6px 10px; background: #fff;
-              font-size: 0.76rem; color: #64748b; }
-.stepper .s b { display: block; font-size: 0.86rem; color: #334155; }
-.stepper .s.done { background: #f1f5f9; }
-.stepper .s.now { border: 2px solid #1e3a68; background: #eef2ff; } .stepper .s.now b { color: #1e3a68; }
+.stepper .s { flex: 1 1 140px; border: 1px solid var(--line); border-radius: 10px; padding: 6px 10px; background: #fff;
+              font-size: 0.76rem; color: var(--muted); }
+.stepper .s b { display: block; font-size: 0.86rem; color: var(--ink); }
+.stepper .s.done { background: #eef4f0; }
+.stepper .s.now { border: 2px solid var(--grass); background: #e6f6ee; } .stepper .s.now b { color: var(--pitch); }
 .notice { border-radius: 8px; padding: 8px 12px; margin: 6px 0; font-size: 0.86rem; }
-.notice.n-conflict { background: #fff8e1; border: 1px solid #f3d27a; color: #6b4e00; }
-.notice.n-data { background: #f1f5f9; border: 1px solid #cbd5e1; color: #334155; }
-.lead { font-size: 0.95rem; color: #0f1f3d; margin-top: 8px; }
-.support { font-size: 0.82rem; color: #64748b; margin-top: 2px; }
-.recorded { background: #fff; border: 1px solid #cbd5e1; border-left: 4px solid #1e3a68; border-radius: 8px;
-            padding: 8px 12px; margin: 6px 0; font-size: 0.9rem; color: #1e293b; }
-.decision-h { font-size: 1.05rem; font-weight: 700; color: #0f1f3d; }
-.bar { height: 12px; border-radius: 999px; background: #e2e8f0; margin: 2px 0 10px 0; overflow: hidden; }
+.notice.n-conflict { background: #fffbea; border: 1px solid #f1e3a6; border-left: 6px solid var(--yellow); color: #5a4500; }
+.notice.n-data { background: #eef2ef; border: 1px solid #cdd8d2; color: #334155; }
+.lead { font-size: 0.95rem; color: var(--ink); margin-top: 8px; }
+.support { font-size: 0.82rem; color: var(--muted); margin-top: 2px; }
+.recorded { background: #fff; border: 1px solid #cdd8d2; border-left: 6px solid var(--pitch); border-radius: 10px;
+            padding: 9px 12px; margin: 6px 0; font-size: 0.9rem; color: var(--ink); }
+.bar { height: 12px; border-radius: 999px; background: #e1e8e4; margin: 2px 0 10px 0; overflow: hidden; }
 .bar > span { display: block; height: 100%; border-radius: 999px; }
 .barlabel { font-size: 0.78rem; color: #475569; }
-.field-err { color: #b71c1c; font-size: 0.78rem; margin: -6px 0 8px 0; }
-.coach-card { background: #fff; border: 1px solid #e2e8f0; border-radius: 10px; padding: 10px 14px; margin-bottom: 8px; }
+.field-err { color: var(--red); font-size: 0.78rem; margin: -6px 0 8px 0; }
+.coach-card { background: #fff; border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; margin-bottom: 8px; }
+
+/* buttons */
+.stButton > button, .stDownloadButton > button { border-radius: 999px; font-weight: 600; }
+.stButton > button[kind="secondary"], .stDownloadButton > button { border: 1px solid #cfdcd5; color: var(--pitch); background: #fff; }
+.stButton > button[kind="secondary"]:hover { border-color: var(--grass); color: var(--grass); background: #f4fbf7; }
+.stButton > button[kind="primary"], .stFormSubmitButton > button { background: var(--grass); border-color: var(--grass); }
+[data-testid="stExpander"] details { border-radius: 12px; border-color: var(--line); background: #fff; }
+[data-testid="stVerticalBlockBorderWrapper"] { border-radius: 14px; }
+
+/* sidebar = the dugout */
+[data-testid="stSidebar"] { background:
+    repeating-linear-gradient(180deg, #0b3d2e 0 90px, #0d4434 90px 180px); }
+[data-testid="stSidebar"] h2 { font-family: 'Barlow Condensed', 'Arial Narrow', sans-serif; text-transform: uppercase; letter-spacing: .03em;
+                               color: #fff; font-size: 1.7rem; }
+[data-testid="stSidebar"] [data-testid="stCaptionContainer"], [data-testid="stSidebar"] [data-testid="stCaptionContainer"] p { color: #b9d8c9; }
+[data-testid="stSidebar"] [data-testid="stWidgetLabel"] p, [data-testid="stSidebar"] [data-testid="stWidgetLabel"] { color: #e6f6ee; }
+[data-testid="stSidebar"] [data-testid="stTooltipIcon"] svg { color: #b9d8c9; stroke: #b9d8c9; }
+[data-testid="stSidebar"] hr { border-color: rgba(255,255,255,.15); }
+[data-testid="stSidebar"] [data-testid="stExpander"] details { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.18); }
+[data-testid="stSidebar"] [data-testid="stExpander"] summary p, [data-testid="stSidebar"] [data-testid="stExpander"] summary svg { color: #fff; }
+[data-testid="stSidebar"] .stButton > button { background: #fff; color: var(--pitch); border: 1px solid #fff; }
+[data-testid="stSidebar"] .stButton > button:hover { background: var(--mint); border-color: var(--mint); color: var(--pitch); }
+[data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"] svg,
+[data-testid="stSidebarCollapsedControl"] svg { color: #fff; }
+
+@media (max-width: 640px) {
+  .hero h1 { font-size: 1.35rem; } .hero p { font-size: 0.78rem; } .flow .step { font-size: 0.72rem; padding: 3px 8px 3px 4px; }
+  .card .value { font-size: 1.7rem; } .player-id { font-size: 1.5rem; } .page-h { font-size: 1.6rem; }
+  button[data-baseweb="tab"] { padding: 4px 10px; } button[data-baseweb="tab"] p { font-size: 0.92rem; }
+}
 </style>
 """, unsafe_allow_html=True)
 
 
-def card(label, value, sub="", color="#0f1f3d", tip=""):
+def card(label, value, sub="", color="#0b3d2e", tip=""):
     """Summary card; `tip` adds an ⓘ with a hover explanation."""
     t = (f' <span title="{html.escape(tip)}" style="cursor:help">ⓘ</span>' if tip else "")
     st.markdown(f'<div class="card"><div class="label">{label}{t}</div>'
@@ -387,7 +467,7 @@ def render_coach_table(height=560, show_signer=True):
     done = cdf[cdf.Status != "Awaiting medical sign-off"]
     c1, c2, c3, c4 = st.columns(4)
     with c1:
-        card("Signed off", len(done), f"of {len(cdf)} players", "#1e3a68")
+        card("Signed off", len(done), f"of {len(cdf)} players", "#1e8c64")
     with c2:
         card("Train as planned", int((done.Status == "Train as planned").sum()), "no change", "#1e293b")
     with c3:
@@ -555,7 +635,7 @@ with tabs[0]:
         return ""
 
     def color_review(v):
-        return "color:#1e3a68;font-weight:600" if str(v).startswith("Signed") else "color:#b26a00"
+        return "color:#1e8c64;font-weight:600" if str(v).startswith("Signed") else "color:#b26a00"
 
     if shown.empty:
         st.markdown('<div class="notice n-data">No players match these filters. Press <b>✕ Clear filters</b> to see '
@@ -658,7 +738,7 @@ with tabs[1]:
         with h1:
             card("Risk index", f"{res['risk_index']:.1f}×",
                  f"vs average athlete-day · higher than {min(res['percentile'], 99)}% of training days",
-                 "#b71c1c" if lvl == "High" else "#0f1f3d",
+                 "#b71c1c" if lvl == "High" else "#0b3d2e",
                  tip=f"Model score ÷ average score ({MODEL['base_rate']:.2%}). 2.0× = twice the average athlete-day. "
                      "A relative ranking, not a probability of injury.")
         with h2:
@@ -667,13 +747,13 @@ with tabs[1]:
                  tip="Acute:chronic workload ratio. Above 1.5 = workload spike (C-5); below 0.8 = under-loading (C-7).")
         with h3:
             card("Sleep", f"{rec['sleep_hours']:g} h", "per night · protocol context only",
-                 "#b26a00" if rec["sleep_hours"] < 7 else "#0f1f3d",
+                 "#b26a00" if rec["sleep_hours"] < 7 else "#0b3d2e",
                  tip="Not used by the model (no sleep in the training data). Below 7 h triggers protocol clause C-8.")
 
         reasons = res["reasons"]
         if reasons:
             st.markdown(f'<div class="lead">Why the model rates him {lvl.lower()}: main factor '
-                        f'<b style="color:{"#b71c1c" if lvl == "High" else "#0f1f3d"}">{esc(reasons[0])}</b></div>'
+                        f'<b style="color:{"#b71c1c" if lvl == "High" else "#0b3d2e"}">{esc(reasons[0])}</b></div>'
                         + (f'<div class="support">Also contributing: {esc(" · ".join(reasons[1:]))}</div>' if reasons[1:] else ""),
                         unsafe_allow_html=True)
         else:
@@ -948,7 +1028,7 @@ with tabs[1]:
             scale = max(same["risk_index"], plan["risk_index"], thr_idx) * 1.15
             st.markdown(
                 f'<div class="barlabel">Baseline · {same["risk_index"]:.2f}×</div><div class="bar"><span style="width:'
-                f'{same["risk_index"] / scale * 100:.0f}%;background:#1e3a68"></span></div>'
+                f'{same["risk_index"] / scale * 100:.0f}%;background:#5e6b68"></span></div>'
                 f'<div class="barlabel">With this plan · {plan["risk_index"]:.2f}×</div><div class="bar"><span style="width:'
                 f'{plan["risk_index"] / scale * 100:.0f}%;background:#d97706"></span></div>'
                 f'<div class="support">Same scale for both bars. High-risk flag from {thr_idx:.2f}×.</div>',
@@ -1129,9 +1209,9 @@ with tabs[2]:
                     with k1:
                         card("Rows in file", len(new))
                     with k2:
-                        card("Valid", len(good), "ready to load", "#1e3a68")
+                        card("Valid", len(good), "ready to load", "#1e8c64")
                     with k3:
-                        card("Rejected", len(bad), "see the list below", "#b71c1c" if bad else "#1e3a68")
+                        card("Rejected", len(bad), "see the list below", "#b71c1c" if bad else "#1e8c64")
                     if bad:
                         bad_df = pd.DataFrame([{**{c_: r.get(c_) for c_ in cols_needed}, "problems": "; ".join(e)}
                                                for r, e in bad])
